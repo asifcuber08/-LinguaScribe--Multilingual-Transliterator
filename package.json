@@ -9,8 +9,10 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@clerk/backend": "^2.19.1",
     "@clerk/nextjs": "^6.34.0",
     "google-translate-api-x": "^10.7.2",
+    "googleapis": "^164.1.0",
     "mongoose": "^8.19.1",
     "next": "14.2.33",
     "react": "^18",

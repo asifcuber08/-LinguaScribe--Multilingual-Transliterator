@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
 import connectDB from '@/lib/mongodb';
 import Post from '@/models/Post';
+import { createGoogleDoc } from '@/lib/googleDocs';
 
 // GET all posts for current user
 export async function GET() {
@@ -40,10 +41,33 @@ export async function POST(request) {
 
     await connectDB();
     const body = await request.json();
+    
+    // Create post in MongoDB first
     const post = await Post.create({
       ...body,
       userId: user.id,
+      googleDocId: null, // Will be updated after Google Doc creation
     });
+    
+    // Try to create Google Doc
+    try {
+      const googleDocId = await createGoogleDoc(
+        user.id,
+        body.englishText,
+        body.translatedText,
+        body.language
+      );
+      
+      // Update post with Google Doc ID
+      post.googleDocId = googleDocId;
+      await post.save();
+      
+    } catch (googleError) {
+      console.error('Failed to create Google Doc:', googleError);
+      // Post still saved in MongoDB, but without Google Doc
+      // User can still use the app
+    }
+    
     return NextResponse.json({ success: true, data: post }, { status: 201 });
   } catch (error) {
     return NextResponse.json(

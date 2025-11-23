@@ -18,6 +18,7 @@ export default function PostsPage() {
   const [newEnglish, setNewEnglish] = useState('');
   const [newTranslated, setNewTranslated] = useState('');
   const [newLanguage, setNewLanguage] = useState('hindi');
+  const [shareMenuOpen, setShareMenuOpen] = useState(null); // Track which post's share menu is open
   const router = useRouter();
 
   useEffect(() => {
@@ -145,6 +146,7 @@ export default function PostsPage() {
       return;
     }
 
+    setLoading(true);
     try {
       const response = await fetch('/api/posts', {
         method: 'POST',
@@ -167,11 +169,39 @@ export default function PostsPage() {
         setShowAddForm(false);
         setMessage('Post added successfully!');
         setTimeout(() => setMessage(''), 3000);
+      } else {
+        setMessage('Error adding post: ' + data.error);
+        setTimeout(() => setMessage(''), 3000);
       }
     } catch (error) {
-      setMessage('Error adding post');
+      setMessage('Error adding post: ' + error.message);
       setTimeout(() => setMessage(''), 3000);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const toggleShareMenu = (postId) => {
+    setShareMenuOpen(shareMenuOpen === postId ? null : postId);
+  };
+
+  const handleShare = (post, platform) => {
+    const shareText = `English: ${post.englishText}\n\n${LANGUAGES[post.language].name}: ${post.translatedText}`;
+    const encodedText = encodeURIComponent(shareText);
+    
+    let shareUrl = '';
+    
+    if (platform === 'facebook') {
+      shareUrl = `https://www.facebook.com/sharer/sharer.php?quote=${encodedText}`;
+    } else if (platform === 'linkedin') {
+      // For LinkedIn, we'll share the text as a URL parameter
+      // In a real app, you'd want to share a link to the actual post
+      const appUrl = encodeURIComponent(window.location.origin);
+      shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${appUrl}&summary=${encodedText}`;
+    }
+    
+    window.open(shareUrl, '_blank', 'width=600,height=400');
+    setShareMenuOpen(null); // Close menu after sharing
   };
 
   if (loading) {
@@ -271,9 +301,10 @@ export default function PostsPage() {
           
           <button
             onClick={handleAddPost}
-            className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold py-3 rounded-lg transition duration-200"
+            disabled={loading || !newEnglish.trim()}
+            className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 disabled:from-gray-600 disabled:to-gray-600 text-white font-semibold py-3 rounded-lg transition duration-200 disabled:cursor-not-allowed"
           >
-            Add Post
+            {loading ? 'Adding...' : 'Add Post'}
           </button>
         </div>
       )}
@@ -481,19 +512,60 @@ export default function PostsPage() {
                     </p>
                   </div>
                   
-                  <div className="flex gap-3">
+                  <div className="flex gap-3 flex-wrap">
                     <button
                       onClick={() => startEdit(post)}
-                      className="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200"
+                      className="flex-1 min-w-[120px] bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200"
                     >
                       ✎ Edit
                     </button>
                     <button
                       onClick={() => handleDelete(post._id)}
-                      className="flex-1 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold py-2 px-4 rounded-lg transition duration-200"
+                      className="flex-1 min-w-[120px] bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold py-2 px-4 rounded-lg transition duration-200"
                     >
                       🗑 Delete
                     </button>
+                    {post.googleDocId && (
+                      <button
+                        onClick={() => window.open(`https://docs.google.com/document/d/${post.googleDocId}/edit`, '_blank')}
+                        className="flex-1 min-w-[120px] bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold py-2 px-4 rounded-lg transition duration-200"
+                        title="Open in Google Docs"
+                      >
+                        📄 Google Docs
+                      </button>
+                    )}
+                    <div className="relative flex-1 min-w-[120px]">
+                      <button
+                        onClick={() => toggleShareMenu(post._id)}
+                        className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-2 px-4 rounded-lg transition duration-200"
+                      >
+                        📤 Share
+                      </button>
+                      
+                      {/* Share Dropdown Menu */}
+                      {shareMenuOpen === post._id && (
+                        <div className="absolute bottom-full mb-2 left-0 w-full bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-10">
+                          <button
+                            onClick={() => handleShare(post, 'facebook')}
+                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-800 text-white transition duration-200 rounded-t-lg"
+                          >
+                            <svg className="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                            </svg>
+                            <span>Share on Facebook</span>
+                          </button>
+                          <button
+                            onClick={() => handleShare(post, 'linkedin')}
+                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-800 text-white transition duration-200 rounded-b-lg"
+                          >
+                            <svg className="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                            </svg>
+                            <span>Share on LinkedIn</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}

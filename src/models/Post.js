@@ -21,6 +21,10 @@ const PostSchema = new mongoose.Schema(
       enum: ['hindi', 'kannada', 'gujarati'],
       default: 'hindi',
     },
+    googleDocId: {
+      type: String,
+      default: null,
+    },
   },
   {
     timestamps: true,
